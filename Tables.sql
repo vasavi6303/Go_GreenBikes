@@ -101,7 +101,7 @@ CREATE TABLE address (
     city             VARCHAR2(30 CHAR),
     state            VARCHAR2(30 CHAR),
     country          VARCHAR2(30 CHAR),
-    zipcode          NUMBER,
+    zipcode          VARCHAR2(10 CHAR),
     latitude         NUMBER,
     longitude        NUMBER,
     user_user_id     NUMBER NOT NULL
@@ -128,7 +128,7 @@ CREATE TABLE id_detail (
 CREATE TABLE location (
     location_id        NUMBER DEFAULT location_seq.NEXTVAL NOT NULL,
     location_name      VARCHAR2(20 CHAR),
-    loc_status         CHAR(1),
+    loc_status         VARCHAR2(20 CHAR),
     no_of_slots        NUMBER,
     address_address_id NUMBER NOT NULL
 );
