@@ -1,5 +1,3 @@
-
-
 CREATE OR REPLACE PACKAGE application_user_subs_pkg IS
     PROCEDURE insert_user_subs(
         p_subs_start_date      IN user_subs.subs_start_date%TYPE,
@@ -49,13 +47,19 @@ CREATE OR REPLACE PACKAGE BODY application_user_subs_pkg IS
         WHEN VALUE_ERROR THEN
             dbms_output.put_line('Invalid value entered.');
         WHEN e_foreign_key_violation THEN
-            dbms_output.put_line('Foreign key constraint violation.');
+            -- Here you handle foreign key violations
+            IF SQLERRM LIKE '%SUBS_PLAN_SUBSPLAN_ID%' THEN
+                dbms_output.put_line('Foreign key violation on subs_plan_subsplan_id.');
+            ELSIF SQLERRM LIKE '%USER_USER_ID%' THEN
+                dbms_output.put_line('Foreign key violation on user_user_id.');
+            ELSE
+                dbms_output.put_line('Foreign key violation detected.');
+            END IF;
         WHEN OTHERS THEN
             dbms_output.put_line('General error in insert_user_subs: ' || SQLERRM);
     END insert_user_subs;
 END application_user_subs_pkg;
 /
-
 
 
 BEGIN
@@ -115,4 +119,5 @@ EXCEPTION
         ROLLBACK;
         dbms_output.put_line('Error: ' || SQLERRM);
 END;
+
 

@@ -1,10 +1,7 @@
-
 CREATE OR REPLACE PACKAGE application_ride_pkg IS
     PROCEDURE start_ride(
-      
-      
-        p_user_id           IN ride.user_user_id%TYPE,
-        p_bike_id           IN ride.bike_bike_id%TYPE
+        p_user_id  IN ride.user_user_id%TYPE,
+        p_bike_id  IN ride.bike_bike_id%TYPE
     );
 END application_ride_pkg;
 /
@@ -34,7 +31,22 @@ CREATE OR REPLACE PACKAGE BODY application_ride_pkg IS
 
         location_not_active EXCEPTION;
         PRAGMA EXCEPTION_INIT(location_not_active, -20206);
+
+        user_not_found EXCEPTION;
+        bike_not_found EXCEPTION;
     BEGIN
+        -- Check if user exists
+        SELECT COUNT(*) INTO v_remaining_time FROM user_subs WHERE user_user_id = p_user_id;
+        IF v_remaining_time = 0 THEN
+            RAISE user_not_found;
+        END IF;
+
+        -- Check if bike exists
+        SELECT COUNT(*) INTO v_bike_status_id FROM bike WHERE bike_id = p_bike_id;
+        IF v_bike_status_id = 0 THEN
+            RAISE bike_not_found;
+        END IF;
+
         -- Check bike availability and fetch its location
         SELECT bike_status_status_id, location_location_id INTO v_bike_status_id, v_location_id
         FROM bike WHERE bike_id = p_bike_id;
@@ -63,6 +75,10 @@ CREATE OR REPLACE PACKAGE BODY application_ride_pkg IS
         INSERT INTO ride (start_time, start_location_id, user_user_id, bike_bike_id)
         VALUES (SYSTIMESTAMP, v_location_id, p_user_id, p_bike_id);
     EXCEPTION
+        WHEN user_not_found THEN
+            dbms_output.put_line('Error: No user found with the given user ID.');
+        WHEN bike_not_found THEN
+            dbms_output.put_line('Error: No bike found with the given bike ID.');
         WHEN bike_not_available THEN
             dbms_output.put_line('Error: Bike is not available for use.');
         WHEN insufficient_subscription_time THEN
@@ -86,7 +102,7 @@ BEGIN
     application_ride_pkg.start_ride(
       
         p_user_id => 1,
-        p_bike_id => 2
+        p_bike_id => 1
     );
     COMMIT;
 EXCEPTION
