@@ -161,7 +161,7 @@ END application_ride_stop_pkg;
 
 BEGIN
     application_ride_stop_pkg.stop_ride(
-        p_ride_id => 3,  -- This ID does not exist
+        p_ride_id => 1,  -- This ID does not exist
         p_end_time => SYSTIMESTAMP,
         p_end_location_id => 2,  -- Assume this ID is provided
         p_bike_status => 3  -- Example status ID
