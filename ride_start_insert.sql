@@ -1,140 +1,115 @@
-CREATE OR REPLACE PACKAGE application_trans_pkg IS
-    PROCEDURE insert_trans(
-
-        p_transaction_time         TIMESTAMP WITH TIME ZONE,
-        p_amount                   NUMBER,
-
-        p_user_user_id             user_subs.user_user_id%TYPE,
-        p_subs_plan_id             user_subs.subs_plan_subsplan_id%TYPE
+CREATE OR REPLACE PACKAGE application_ride_pkg IS
+    PROCEDURE start_ride(
+        p_user_id  IN ride.user_user_id%TYPE,
+        p_bike_id  IN ride.bike_bike_id%TYPE
     );
-END application_trans_pkg;
+END application_ride_pkg;
 /
 
-CREATE OR REPLACE PACKAGE BODY application_trans_pkg IS
-    PROCEDURE insert_trans(
-
-        p_transaction_time         TIMESTAMP WITH TIME ZONE,
-        p_amount                   NUMBER,
-        p_user_user_id             user_subs.user_user_id%TYPE,
-        p_subs_plan_id             user_subs.subs_plan_subsplan_id%TYPE
+CREATE OR REPLACE PACKAGE BODY application_ride_pkg IS
+    PROCEDURE start_ride(
+        p_user_id  IN ride.user_user_id%TYPE,
+        p_bike_id  IN ride.bike_bike_id%TYPE
     ) IS
-        v_plan_cost NUMBER;
-        v_duration_time NUMBER;
-        v_start_date DATE := SYSDATE;
-        v_end_date DATE;
-        v_user_exists NUMBER;
-        v_alloted_time NUMBER;
-        v_remaining_time NUMBER;
-        v_user_count NUMBER;
-BEGIN
-        -- Check if the user exists in the users table
-SELECT COUNT(*) INTO v_user_count FROM users WHERE user_id = p_user_user_id;
-IF v_user_count = 0 THEN
-            dbms_output.put_line('User does not exist.');
-            RETURN;
-END IF;
+        v_bike_status_id     NUMBER;
+        v_remaining_time     NUMBER;
+        v_location_id        NUMBER;
+        v_location_status    VARCHAR2(20);
 
+        -- Exceptions
+        bike_not_available           EXCEPTION;
+        PRAGMA EXCEPTION_INIT(bike_not_available, -20001);
 
+        insufficient_subscription_time EXCEPTION;
+        PRAGMA EXCEPTION_INIT(insufficient_subscription_time, -20002);
 
-        -- Retrieve the cost and duration from the subscription plan table
-SELECT price, duration_time INTO v_plan_cost, v_duration_time
-FROM subs_plan
-WHERE subsplan_id = p_subs_plan_id;
+        no_bike_found EXCEPTION;
+        PRAGMA EXCEPTION_INIT(no_bike_found, -20204);
 
--- Check if the amount matches the plan cost
-IF p_amount != v_plan_cost THEN
-            dbms_output.put_line('Check the plan amount: does not match the subscription plan cost.');
+        no_user_subscription_found EXCEPTION;
+        PRAGMA EXCEPTION_INIT(no_user_subscription_found, -20205);
 
-ELSE
-            -- Calculate end date based which is defauted to 90 days from start date
-            v_end_date := v_start_date + 90;
+        location_not_active EXCEPTION;
+        PRAGMA EXCEPTION_INIT(location_not_active, -20206);
 
-            -- Check if the user already has a subscription record
-SELECT COUNT(*) INTO v_user_exists
-FROM user_subs
-WHERE user_user_id = p_user_user_id;
+        user_not_found EXCEPTION;
+        bike_not_found EXCEPTION;
+    BEGIN
+        -- Check if user exists
+        SELECT COUNT(*) INTO v_remaining_time FROM user_subs WHERE user_user_id = p_user_id;
+        IF v_remaining_time = 0 THEN
+            RAISE user_not_found;
+        END IF;
 
-IF v_user_exists > 0 THEN
-                -- Update existing user_subs record
+        -- Check if bike exists
+        SELECT COUNT(*) INTO v_bike_status_id FROM bike WHERE bike_id = p_bike_id;
+        IF v_bike_status_id = 0 THEN
+            RAISE bike_not_found;
+        END IF;
 
-UPDATE user_subs
-SET alloted_time = alloted_time + v_duration_time,
-    remaining_time = remaining_time + v_duration_time,
-    subs_plan_subsplan_id = p_subs_plan_id,
-    subs_start_date = v_start_date,
-    subs_end_date = v_end_date,
-    user_subs_status = 'Active'
-WHERE user_user_id = p_user_user_id;
-ELSE
-                -- Insert new user_subs record
-                INSERT INTO user_subs (
-                    user_user_id,
-                    alloted_time,
-                    remaining_time,
-                    user_subs_status,
-                    subs_plan_subsplan_id,
-                    subs_start_date,
-                    subs_end_date
-                ) VALUES (
-                    p_user_user_id,
-                    v_duration_time,
-                    v_duration_time,
-                    'Active',
-                    p_subs_plan_id,
-                    v_start_date,
-                    v_end_date
-                );
-END IF;
+        -- Check bike availability and fetch its location
+        SELECT bike_status_status_id, location_location_id INTO v_bike_status_id, v_location_id
+        FROM bike WHERE bike_id = p_bike_id;
 
+        -- Ensure bike is available
+        IF v_bike_status_id != 1 THEN -- Assuming '1' is the status ID for 'Available'
+            RAISE bike_not_available;
+        END IF;
 
+        -- Check if location is active
+        SELECT loc_status INTO v_location_status FROM location WHERE location_id = v_location_id;
+        IF v_location_status != 'Active' THEN
+            RAISE location_not_active;
+        END IF;
 
-        -- Insert the transaction record with either 'C' or 'F'
-INSERT INTO trans (
-    description,
-    transaction_time,
-    amount,
-    transaction_status,
-    user_user_id,
-    trans_type_trans_type_id
-) VALUES (
-             'Sub_Payment',
-             p_transaction_time,
-             p_amount,
-             'C',
-             p_user_user_id,
-             1  -- Assuming the transaction type ID for subscriptions is 1
-         );
-END IF;
+        -- Check user's subscription validity
+        SELECT remaining_time INTO v_remaining_time FROM user_subs WHERE user_user_id = p_user_id;
+        IF v_remaining_time <= 0 THEN
+            RAISE insufficient_subscription_time;
+        END IF;
 
-EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            dbms_output.put_line('Subscription plan does not exist.');
+        -- Update the bike status to 'In Use'
+        UPDATE bike SET bike_status_status_id = 2 WHERE bike_id = p_bike_id; -- Assuming '2' is 'In Use'
 
-WHEN OTHERS THEN
-            dbms_output.put_line('Transaction failed: An unexpected error occurred.');
-
-END insert_trans;
-END application_trans_pkg;
+        -- Insert a new ride record
+        INSERT INTO ride (start_time, start_location_id, user_user_id, bike_bike_id)
+        VALUES (SYSTIMESTAMP, v_location_id, p_user_id, p_bike_id);
+    EXCEPTION
+        WHEN user_not_found THEN
+            dbms_output.put_line('Error: No user found with the given user ID.');
+        WHEN bike_not_found THEN
+            dbms_output.put_line('Error: No bike found with the given bike ID.');
+        WHEN bike_not_available THEN
+            dbms_output.put_line('Error: Bike is not available for use.');
+        WHEN insufficient_subscription_time THEN
+            dbms_output.put_line('Error: Insufficient subscription time to start a ride.');
+        WHEN no_bike_found THEN
+            dbms_output.put_line('Error: No bike found with the given ID.');
+        WHEN no_user_subscription_found THEN
+            dbms_output.put_line('Error: No subscription record found for the user ID.');
+        WHEN location_not_active THEN
+            dbms_output.put_line('Error: The bike location is not active.');
+        WHEN OTHERS THEN
+            dbms_output.put_line('Unhandled exception: ' || SQLERRM);
+    END start_ride;
+END application_ride_pkg;
 /
 
 
 
+
 BEGIN
-    application_trans_pkg.insert_trans(
-
-        p_transaction_time         => SYSTIMESTAMP,
-        p_amount                   => 12,
-        p_user_user_id             => 1,
-        p_subs_plan_id             => 1
+    application_ride_pkg.start_ride(
+      
+        p_user_id => 1,
+        p_bike_id => 1
     );
-
-COMMIT;
+    COMMIT;
 EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
-        dbms_output.put_line('Error during transaction insertion: ' || SQLERRM);
+        dbms_output.put_line('Error during ride start: ' || SQLERRM);
 END;
-/
 
 
 

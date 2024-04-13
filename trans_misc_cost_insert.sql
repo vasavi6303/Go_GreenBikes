@@ -98,7 +98,7 @@ BEGIN
         p_transaction_status       => 'C',           -- Assuming 'C' represents 'Completed'
         p_user_user_id             => 5,             -- Example user ID
         p_trans_type_trans_type_id => 2,             -- Example transaction type ID
-        p_misc_cost_id             => 7              -- Example miscellaneous cost ID
+        p_misc_cost_id             => 1              -- Example miscellaneous cost ID
     );
     COMMIT;
 EXCEPTION
