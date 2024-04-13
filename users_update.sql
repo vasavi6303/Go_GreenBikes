@@ -42,7 +42,19 @@ CREATE OR REPLACE PACKAGE BODY application_user_update_pkg IS
         user_not_found EXCEPTION;  -- Declare the missing exception
         PRAGMA EXCEPTION_INIT(username_already_exists, -1); -- Unique constraint error code
         PRAGMA EXCEPTION_INIT(user_not_found, -20001);  -- Map to the correct Oracle error for user not found
+        invalid_pincode EXCEPTION;
+        invalid_phone_number EXCEPTION;
     BEGIN
+    -- Validate phone number length
+        IF LENGTH(p_phone_number) != 10 THEN
+            RAISE invalid_phone_number;
+        END IF;
+
+        -- Validate pincode length
+        IF LENGTH(p_zipcode) != 5 THEN
+            RAISE invalid_pincode;
+        END IF;
+
         -- Check if user_id exists
         SELECT COUNT(*)
         INTO v_exists
@@ -99,6 +111,10 @@ CREATE OR REPLACE PACKAGE BODY application_user_update_pkg IS
         dbms_output.put_line('Update successful for user ID ' || p_user_id);
 
     EXCEPTION
+        WHEN invalid_pincode THEN
+            dbms_output.put_line('Error: Zipcode must be exactly 5 characters.');
+        WHEN invalid_phone_number THEN
+            dbms_output.put_line('Error: Phone number must be exactly 10 characters.');
         WHEN username_already_exists THEN
             dbms_output.put_line('Error: Username already exists and must be unique.');
         WHEN user_not_found THEN
@@ -113,7 +129,7 @@ END application_user_update_pkg;
 
 BEGIN
     application_user_update_pkg.update_all(
-        p_user_id          => 10,
+        p_user_id          => 3,
         p_user_name        => 'user3',
         p_email_id         => 'updated.email@example.com',
         p_phone_number     => '555-0202',
