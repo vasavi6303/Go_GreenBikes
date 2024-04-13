@@ -46,15 +46,8 @@ CREATE OR REPLACE PACKAGE BODY application_trans_pkg IS
             dbms_output.put_line('Check the plan amount: does not match the subscription plan cost.');
             
         ELSE
-            -- Calculate end date based on the subscription plan ID
-            CASE p_subs_plan_id
-                WHEN 1 THEN v_end_date := v_start_date + 100;
-                WHEN 2 THEN v_end_date := v_start_date + 250;
-                WHEN 3 THEN v_end_date := v_start_date + 370;
-                WHEN 4 THEN v_end_date := v_start_date + 490;
-                WHEN 5 THEN v_end_date := v_start_date + 600;
-                ELSE RAISE_APPLICATION_ERROR(-20001, 'Invalid subscription plan ID');
-            END CASE;
+            -- Calculate end date based which is defauted to 90 days from start date
+            v_end_date := v_start_date + 90;
 
             -- Check if the user already has a subscription record
             SELECT COUNT(*) INTO v_user_exists
@@ -63,16 +56,14 @@ CREATE OR REPLACE PACKAGE BODY application_trans_pkg IS
 
             IF v_user_exists > 0 THEN
                 -- Update existing user_subs record
-                SELECT alloted_time, remaining_time INTO v_alloted_time, v_remaining_time
-                FROM user_subs
-                WHERE user_user_id = p_user_user_id;
 
                 UPDATE user_subs
-                SET alloted_time = v_alloted_time + v_duration_time,
-                    remaining_time = v_remaining_time + v_duration_time,
+                SET alloted_time = alloted_time + v_duration_time,
+                    remaining_time = remaining_time + v_duration_time,
                     subs_plan_subsplan_id = p_subs_plan_id,
                     subs_start_date = v_start_date,
-                    subs_end_date = v_end_date
+                    subs_end_date = v_end_date,
+                    user_subs_status = 'Active'
                 WHERE user_user_id = p_user_user_id;
             ELSE
                 -- Insert new user_subs record
@@ -95,7 +86,7 @@ CREATE OR REPLACE PACKAGE BODY application_trans_pkg IS
                 );
             END IF;
            
-        END IF;
+        
 
         -- Insert the transaction record with either 'C' or 'F'
         INSERT INTO trans (
@@ -113,6 +104,7 @@ CREATE OR REPLACE PACKAGE BODY application_trans_pkg IS
             p_user_user_id,
             1  -- Assuming the transaction type ID for subscriptions is 1
         );
+        END IF;
 
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -131,8 +123,8 @@ BEGIN
     application_trans_pkg.insert_trans(
        
         p_transaction_time         => SYSTIMESTAMP,
-        p_amount                   => 10,
-        p_user_user_id             => 9,
+        p_amount                   => 12,
+        p_user_user_id             => 1,
         p_subs_plan_id             => 1
     );
     
