@@ -60,22 +60,18 @@ CREATE OR REPLACE PACKAGE BODY application_ride_stop_pkg IS
         END;
 
 
-        DBMS_OUTPUT.PUT_LINE('Start Time: ' || TO_CHAR(v_start_time, 'DD-MON-YYYY HH24:MI:SS'));
-        DBMS_OUTPUT.PUT_LINE('End Time: ' || TO_CHAR(p_end_time, 'DD-MON-YYYY HH24:MI:SS'));
+        DBMS_OUTPUT.PUT_LINE(v_start_time);
+        DBMS_OUTPUT.PUT_LINE( p_end_time);
 
 
 
         -- Calculate the ride duration in minutes
-        v_duration := (EXTRACT(DAY FROM (p_end_time - v_start_time)) * 1440) +
-                      (EXTRACT(HOUR FROM (p_end_time - v_start_time)) * 60) +
-                      EXTRACT(MINUTE FROM (p_end_time - v_start_time));
+        v_duration := (EXTRACT(DAY FROM p_end_time) * 1440) - (EXTRACT(DAY FROM v_start_time) * 1440) +
+(EXTRACT(HOUR FROM p_end_time) * 60) - (EXTRACT(HOUR FROM v_start_time) * 60) +
+(EXTRACT(MINUTE FROM p_end_time)) - (EXTRACT(MINUTE FROM v_start_time));
 
         -- Ensure non-negative and meaningful duration
-        IF v_duration < 1 THEN
-            v_duration := 0;
-        ELSE
-            v_duration := ROUND(v_duration);
-        END IF;
+      
 
         -- Retrieve remaining time from user_subs
         SELECT remaining_time INTO v_remaining_time FROM user_subs WHERE user_user_id = v_user_id;
@@ -142,14 +138,13 @@ END application_ride_stop_pkg;
 
 BEGIN
     application_ride_stop_pkg.stop_ride(
-        p_ride_id => 3,  -- This ID does not exist
+        p_ride_id => 12,  -- This ID does not exist
         p_end_time => SYSTIMESTAMP,
         p_end_location_id => 2,  -- Assume this ID is provided
-        p_bike_status => 1  -- Example status ID
+        p_bike_status => 3  -- Example status ID
     );
 EXCEPTION
     WHEN OTHERS THEN
         dbms_output.put_line('Error: ' || SQLERRM);
 END;
-
 
