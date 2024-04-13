@@ -1,5 +1,6 @@
 SET SERVEROUTPUT ON;
 
+-- Declare a variable to hold table names for dropping them
 DECLARE
     v_table_name user_tables.table_name%TYPE;
 BEGIN
@@ -7,93 +8,86 @@ BEGIN
     FOR c_fk IN (
         SELECT table_name, constraint_name
         FROM user_constraints
-        WHERE constraint_type = 'R' -- Foreign Key Constraint
-          AND r_constraint_name IN (
-              SELECT constraint_name
-              FROM user_constraints
-              WHERE table_name IN ('ADDRESS', 'BIKE', 'BIKE_STATUS', 'ID_DETAIL',
-                                   'LOCATION', 'MISCELLANEOUS_COST', 'RIDE',
-                                   'SUBS_PLAN', 'TRANS', 'TRANS_TYPE', 'USERS', 'USER_SUBS')
-          )
+        WHERE constraint_type = 'R' AND r_constraint_name IN (
+            SELECT constraint_name
+            FROM user_constraints
+            WHERE table_name IN ('ADDRESS', 'BIKE', 'BIKE_STATUS', 'ID_DETAIL',
+                                 'LOCATION', 'MISCELLANEOUS_COST', 'RIDE',
+                                 'SUBS_PLAN', 'TRANS', 'TRANS_TYPE', 'USERS', 'USER_SUBS','LOCATION_ADDRESS')
+        )
     ) LOOP
         BEGIN
             EXECUTE IMMEDIATE 'ALTER TABLE ' || c_fk.table_name || ' DROP CONSTRAINT ' || c_fk.constraint_name;
             dbms_output.put_line('Dropped foreign key constraint ' || c_fk.constraint_name || ' on table ' || c_fk.table_name);
         EXCEPTION
             WHEN OTHERS THEN
-                dbms_output.put_line('Error dropping foreign key constraint ' || c_fk.constraint_name || ': ' || sqlerrm);
+                dbms_output.put_line('Error dropping foreign key constraint ' || c_fk.constraint_name || ': ' || SQLERRM);
         END;
     END LOOP;
 
-    -- Loop over the tables to drop them if they exist
+    -- Loop over the tables to drop them
     FOR c IN (
         SELECT table_name
         FROM user_tables
         WHERE table_name IN ('ADDRESS', 'BIKE', 'BIKE_STATUS', 'ID_DETAIL',
                              'LOCATION', 'MISCELLANEOUS_COST', 'RIDE',
-                             'SUBS_PLAN', 'TRANS', 'TRANS_TYPE', 'USERS', 'USER_SUBS')
+                             'SUBS_PLAN', 'TRANS', 'TRANS_TYPE', 'USERS', 'USER_SUBS', 'LOCATION_ADDRESS')
     ) LOOP
         v_table_name := c.table_name;
-
-        -- Check if the table exists before attempting to drop
         BEGIN
-            EXECUTE IMMEDIATE 'DROP TABLE ' || v_table_name;
+            EXECUTE IMMEDIATE 'DROP TABLE ' || v_table_name || ' CASCADE CONSTRAINTS';
             dbms_output.put_line('Dropped table ' || v_table_name);
         EXCEPTION
             WHEN OTHERS THEN
-                dbms_output.put_line('Error dropping table ' || v_table_name || ': ' || sqlerrm);
+                dbms_output.put_line('Error dropping table ' || v_table_name || ': ' || SQLERRM);
         END;
     END LOOP;
 END;
 /
 
+-- Dropping sequences
 SET SERVEROUTPUT ON;
-
 DECLARE
     v_sequence_name VARCHAR2(100);
 BEGIN
-    -- Loop over the sequences to drop them if they exist
     FOR c IN (
         SELECT sequence_name
         FROM user_sequences
         WHERE sequence_name IN ('ADDRESS_SEQ', 'BIKE_SEQ', 'BIKE_STATUS_SEQ', 'ID_DETAIL_SEQ',
                                 'LOCATION_SEQ', 'MISCELLANEOUS_COST_SEQ', 'RIDE_SEQ',
-                                'SUBS_PLAN_SEQ', 'TRANS_SEQ', 'TRANS_TYPE_SEQ', 'USER_SEQ', 'USER_SUBS_SEQ')
+                                'SUBS_PLAN_SEQ', 'TRANS_SEQ', 'TRANS_TYPE_SEQ', 'USER_SEQ', 'USER_SUBS_SEQ', 'LOCATION_ADDRESS_SEQ')
     ) LOOP
         v_sequence_name := c.sequence_name;
-
-        -- Check if the sequence exists before attempting to drop
         BEGIN
             EXECUTE IMMEDIATE 'DROP SEQUENCE ' || v_sequence_name;
             dbms_output.put_line('Dropped sequence ' || v_sequence_name);
         EXCEPTION
             WHEN OTHERS THEN
-                -- Output the error if the sequence cannot be dropped
-                dbms_output.put_line('Error dropping sequence ' || v_sequence_name || ': ' || sqlerrm);
+                dbms_output.put_line('Error dropping sequence ' || v_sequence_name || ': ' || SQLERRM);
         END;
     END LOOP;
 END;
 /
 
+-- Create sequences
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE address_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE bike_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE bike_status_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE id_detail_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE location_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE location_address_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE miscellaneous_cost_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE ride_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE subs_plan_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE trans_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE trans_type_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE user_subs_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE';
+END;
+/
 
 
--- Now you can execute your create table and sequence statements here
-CREATE SEQUENCE address_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE bike_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-
-CREATE SEQUENCE bike_status_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE id_detail_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE location_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE miscellaneous_cost_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE ride_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-
-CREATE SEQUENCE subs_plan_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE trans_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE trans_type_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-CREATE SEQUENCE user_subs_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE NOCYCLE;
-
--- Create Tables
 CREATE TABLE address (
     address_id       NUMBER DEFAULT address_seq.NEXTVAL NOT NULL,
     street_address_1 VARCHAR2(30 CHAR),
@@ -105,6 +99,21 @@ CREATE TABLE address (
     latitude         NUMBER,
     longitude        NUMBER,
     user_user_id     NUMBER NOT NULL
+);
+
+
+-- Create Location_Address
+CREATE TABLE location_address (
+    loc_address_id       NUMBER DEFAULT location_address_seq.NEXTVAL NOT NULL,
+    street_address_1 VARCHAR2(30 CHAR),
+    street_address_2 VARCHAR2(30 CHAR),
+    city             VARCHAR2(30 CHAR),
+    state            VARCHAR2(30 CHAR),
+    country          VARCHAR2(30 CHAR),
+    zipcode          VARCHAR2(10 CHAR),
+    latitude         NUMBER,
+    longitude        NUMBER,
+    location_location_id     NUMBER NOT NULL
 );
 
 CREATE TABLE bike (
@@ -129,8 +138,8 @@ CREATE TABLE location (
     location_id        NUMBER DEFAULT location_seq.NEXTVAL NOT NULL,
     location_name      VARCHAR2(20 CHAR),
     loc_status         VARCHAR2(20 CHAR),
-    no_of_slots        NUMBER,
-    address_address_id NUMBER NOT NULL
+    no_of_slots        NUMBER
+   
 );
 
 CREATE TABLE miscellaneous_cost (
@@ -154,10 +163,10 @@ CREATE TABLE ride (
 
 CREATE TABLE subs_plan (
     subsplan_id       NUMBER DEFAULT subs_plan_seq.NEXTVAL NOT NULL,
-    subscription_type VARCHAR2(10 CHAR),
+    subscription_type VARCHAR2(20 CHAR),
     price             NUMBER,
     duration_time     NUMBER,
-    description       VARCHAR2(20 CHAR)
+    description       VARCHAR2(30 CHAR)
 );
 
 CREATE TABLE trans (
@@ -186,7 +195,7 @@ CREATE TABLE users (
     date_of_birth     DATE,
     gender            VARCHAR2(30 CHAR),
     registration_date DATE,
-    user_status       CHAR(1),
+    user_status       VARCHAR2(10 CHAR),
     role              VARCHAR2(30 CHAR)
 );
 
@@ -203,6 +212,7 @@ CREATE TABLE user_subs (
 
 -- Add Primary Keys
 ALTER TABLE address ADD CONSTRAINT address_pk PRIMARY KEY (address_id);
+ALTER TABLE location_address ADD CONSTRAINT loc_address_pk PRIMARY KEY (loc_address_id);
 ALTER TABLE bike ADD CONSTRAINT bike_pk PRIMARY KEY (bike_id);
 ALTER TABLE bike_status ADD CONSTRAINT bike_status_pk PRIMARY KEY (status_id);
 ALTER TABLE id_detail ADD CONSTRAINT id_detail_pk PRIMARY KEY (id_verf_id);
@@ -214,22 +224,23 @@ ALTER TABLE trans ADD CONSTRAINT trans_pk PRIMARY KEY (trans_id);
 ALTER TABLE trans_type ADD CONSTRAINT trans_type_pk PRIMARY KEY (trans_type_id);
 ALTER TABLE users ADD CONSTRAINT user_pk PRIMARY KEY (user_id);
 ALTER TABLE user_subs ADD CONSTRAINT user_subs_pk PRIMARY KEY (user_subs_id);
+ALTER TABLE users ADD CONSTRAINT user_name_unique UNIQUE (user_name);
 
 -- Add Foreign Key Constraints
-ALTER TABLE address ADD CONSTRAINT address_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id);
+ALTER TABLE address ADD CONSTRAINT address_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id)  ON DELETE CASCADE;
+ALTER TABLE location_address ADD CONSTRAINT loc_location_fk FOREIGN KEY (location_location_id) REFERENCES location (location_id) ON DELETE CASCADE;
 ALTER TABLE bike ADD CONSTRAINT bike_bike_status_fk FOREIGN KEY (bike_status_status_id) REFERENCES bike_status (status_id);
 ALTER TABLE bike ADD CONSTRAINT bike_location_fk FOREIGN KEY (location_location_id) REFERENCES location (location_id);
-ALTER TABLE id_detail ADD CONSTRAINT id_detail_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id);
-ALTER TABLE location ADD CONSTRAINT location_address_fk FOREIGN KEY (address_address_id) REFERENCES address (address_id);
-ALTER TABLE miscellaneous_cost ADD CONSTRAINT miscellaneous_cost_ride_fk FOREIGN KEY (ride_ride_id) REFERENCES ride (ride_id);
-ALTER TABLE ride ADD CONSTRAINT ride_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id);
+ALTER TABLE id_detail ADD CONSTRAINT id_detail_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id)  ON DELETE CASCADE;
+ALTER TABLE miscellaneous_cost ADD CONSTRAINT miscellaneous_cost_ride_fk FOREIGN KEY (ride_ride_id) REFERENCES ride (ride_id)  ON DELETE CASCADE;
+ALTER TABLE ride ADD CONSTRAINT ride_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id)  ON DELETE CASCADE;
 ALTER TABLE ride ADD CONSTRAINT ride_bike_fk FOREIGN KEY (bike_bike_id) REFERENCES bike (bike_id);
 ALTER TABLE user_subs ADD CONSTRAINT user_subs_subs_plan_fk FOREIGN KEY (subs_plan_subsplan_id) REFERENCES subs_plan (subsplan_id);
-ALTER TABLE user_subs ADD CONSTRAINT user_subs_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id);
+ALTER TABLE user_subs ADD CONSTRAINT user_subs_user_fk FOREIGN KEY (user_user_id) REFERENCES users (user_id)  ON DELETE CASCADE;
 
 -- Create Indexes
 CREATE UNIQUE INDEX address__idx ON address (user_user_id ASC);
-CREATE UNIQUE INDEX location__idx ON location (address_address_id ASC);
+
 CREATE UNIQUE INDEX user_subs__idx ON user_subs (user_user_id ASC);
 
 
